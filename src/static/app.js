@@ -3,6 +3,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const loginButton = document.getElementById("login-button");
+  const loginDialog = document.getElementById("login-dialog");
+  const loginForm = document.getElementById("login-form");
+  const accessStatus = document.getElementById("access-status");
+  let authorization = sessionStorage.getItem("teacherAuthorization");
+
+  function updateAccessState() {
+    const loggedIn = Boolean(authorization);
+    loginButton.textContent = loggedIn ? "Log out" : "Teacher login";
+    accessStatus.textContent = loggedIn
+      ? "You are signed in as a teacher and can manage registrations."
+      : "Teacher login is required to manage registrations.";
+    signupForm.querySelector("button[type=submit]").disabled = !loggedIn;
+    document.querySelectorAll(".delete-btn").forEach((button) => {
+      button.hidden = !loggedIn;
+    });
+  }
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -80,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/unregister?email=${encodeURIComponent(email)}`,
         {
           method: "DELETE",
+          headers: { Authorization: authorization },
         }
       );
 
@@ -124,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
+          headers: { Authorization: authorization },
         }
       );
 
@@ -155,6 +174,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  loginButton.addEventListener("click", () => {
+    if (authorization) {
+      authorization = null;
+      sessionStorage.removeItem("teacherAuthorization");
+      updateAccessState();
+      return;
+    }
+    loginDialog.showModal();
+  });
+
+  document.getElementById("cancel-login").addEventListener("click", () => {
+    loginDialog.close();
+  });
+
+  loginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    authorization = `Basic ${btoa(`${username}:${password}`)}`;
+    sessionStorage.setItem("teacherAuthorization", authorization);
+    loginForm.reset();
+    loginDialog.close();
+    updateAccessState();
+  });
+
   // Initialize app
+  updateAccessState();
   fetchActivities();
 });
